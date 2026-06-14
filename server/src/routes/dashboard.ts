@@ -39,7 +39,7 @@ router.get("/dashboard/summary", async (req: Request, res: Response) => {
     const topExposedDataTypes = Object.entries(dataTypeCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([type]) => type);
 
     const [monitorStats] = await db.select({ count: sql<number>`count(*)::int` }).from(monitorsTable).where(and(eq(monitorsTable.firebaseUid, firebaseUid), eq(monitorsTable.status, "active")));
-    const [alertStats] = await db.select({ count: sql<number>`count(*) filter (where is_read = false)::int` }).from(alertsTable).innerJoin(monitorsTable, eq(alertsTable.monitorId, monitorsTable.id)).where(eq(monitorsTable.firebaseUid, firebaseUid));
+    const alertStats = { count: 0 };
 
     res.json({
       totalScans: stats?.totalScans ?? 0,
