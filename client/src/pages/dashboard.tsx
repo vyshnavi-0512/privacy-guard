@@ -11,11 +11,19 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, AlertTriangle, AlertCircle, CheckCircle, Database, Activity, Fingerprint, History, ArrowRight } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { formatDistanceToNow } from "date-fns";
+import { auth } from "../../firebase";
 
 export default function DashboardPage() {
-  const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
-  const { data: categories, isLoading: isLoadingCategories } = useGetBreachCategories();
-  const { data: history, isLoading: isLoadingHistory } = useGetScanHistory();
+  const user = auth.currentUser;
+  const { data: summary, isLoading: isLoadingSummary } =useGetDashboardSummary({
+    enabled: !!user,
+  });;
+  const { data: categories, isLoading: isLoadingCategories } = useGetBreachCategories({
+    enabled: !!user,
+  });;
+  const { data: history, isLoading: isLoadingHistory } = useGetScanHistory({
+    enabled: !!user,
+  });;
 
   const COLORS = [
     "hsl(var(--chart-1))", 
