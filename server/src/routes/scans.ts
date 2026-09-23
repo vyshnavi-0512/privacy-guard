@@ -291,26 +291,28 @@ router.post("/scans", async (req: Request, res: Response) => {
       providersConnected,
     } = type === "phone" ? generatePhoneExposureSignals(query, query) : { exposureSignals: [], providersConnected: false };
 
+    const todayStr = new Date().toISOString().split("T")[0];
+
     const breaches =
       type === "phone"
         ? [
             // Security Risks
             ...(phoneAssessment?.threatCategories.map((c) => ({
               name: c.name,
-              domain: "mobile/telephony",
-              breachDate: "1970-01-01",
-              dataClasses: ["phone_security_risk"],
+              domain: "telephony / risk assessment",
+              breachDate: todayStr,
+              dataClasses: ["Telephony Security Risk"],
               riskLevel: c.risk,
-              description: `Phone security risk: ${c.name}.`,
+              description: `Phone security risk factor: ${c.name}.`,
               pwnCount: null,
             })) ?? []),
 
             // Exposure Signals (non-fabricated; placeholders until real providers are connected)
             ...(exposureSignals.map((s) => ({
               name: `Exposure Signal - ${s.key}`,
-              domain: "mobile/telephony",
-              breachDate: "1970-01-01",
-              dataClasses: ["phone_exposure_signal"],
+              domain: "telephony / exposure signals",
+              breachDate: todayStr,
+              dataClasses: ["Exposure Signal"],
               riskLevel: s.status === "verified" ? ("low" as const) : ("safe" as any),
               description: `Exposure signal (${s.status}): ${s.value}`,
               pwnCount: null,
@@ -332,7 +334,7 @@ router.post("/scans", async (req: Request, res: Response) => {
         firebaseUid,
         query,
         type,
-        breachCount: type === "phone" ? breaches.length : breaches.length,
+        breachCount: type === "phone" ? 0 : breaches.length,
         riskScore: finalRiskScore,
         riskLevel: finalRiskLevel,
         breaches: breaches as any,

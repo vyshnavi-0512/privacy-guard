@@ -284,7 +284,49 @@ export default function ScanPage() {
             </div>
           </div>
 
-          {scanResult.breachCount === 0 ? (
+          {scanResult.type === "phone" ? (
+            <div className="space-y-4">
+              <p className="font-mono text-sm text-primary flex items-center bg-primary/10 p-3 rounded border border-primary/20">
+                <ShieldAlert className="w-4 h-4 mr-2" />
+                Telephony Risk Profile — Assessed {scanResult.breaches.length} security factors and hygiene indicators for {scanResult.query}.
+              </p>
+
+              <div className="grid grid-cols-1 gap-4">
+                {scanResult.breaches.map((breach, idx) => (
+                  <Card key={idx} className="bg-card/60 border-primary/20 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/50" />
+                    <CardHeader className="py-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="font-display font-semibold text-lg">{breach.name}</CardTitle>
+                          <CardDescription className="font-mono text-xs mt-1">
+                            Category: {breach.domain}
+                            {breach.breachDate && breach.breachDate !== "1970-01-01" && breach.breachDate !== new Date().toISOString().split("T")[0]
+                              ? ` | Date: ${new Date(breach.breachDate).toLocaleDateString()}`
+                              : ""}
+                          </CardDescription>
+                        </div>
+                        <Badge variant="outline" className="font-mono text-xs border-primary/30 text-primary bg-primary/10">
+                          {breach.riskLevel.toUpperCase()} RISK
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <Separator className="bg-border/50" />
+                    <CardContent className="py-4">
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{breach.description}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {breach.dataClasses.map((dc, i) => (
+                          <Badge key={i} variant="secondary" className="font-mono text-[10px] bg-secondary/80">
+                            {dc}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : scanResult.breachCount === 0 ? (
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="py-12 flex flex-col items-center justify-center text-center">
                 <CheckCircle className="w-16 h-16 text-primary mb-4 opacity-80" />
