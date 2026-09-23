@@ -9,6 +9,22 @@ declare module "express-serve-static-core" {
 }
 
 const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken%40system.gserviceaccount.com";
+let cachedCerts: Record<string, string> | null = null;
+let certsExpiry = 0;
+
+async function getFirebaseCerts(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (cachedCerts && now < certsExpiry) {
+    return cachedCerts;
+  }
+  const certsRes = await fetch(FIREBASE_CERTS_URL);
+  if (!certsRes.ok) {
+    throw new Error("Unable to load Firebase signing keys");
+  }
+  cachedCerts = (await certsRes.json()) as Record<string, string>;
+  certsExpiry = now + 60 * 60 * 1000; // Cache for 1 hour
+  return cachedCerts;
+}
 
 async function verifyWithPublicKeys(idToken: string) {
   const [headerSegment, payloadSegment, signatureSegment] = idToken.split(".");
@@ -31,12 +47,7 @@ async function verifyWithPublicKeys(idToken: string) {
     throw new Error("Expired token");
   }
 
-  const certsRes = await fetch(FIREBASE_CERTS_URL);
-  if (!certsRes.ok) {
-    throw new Error("Unable to load Firebase signing keys");
-  }
-
-  const certs = (await certsRes.json()) as Record<string, string>;
+  const certs = await getFirebaseCerts();
   const signingKey = certs[header.kid as string];
   if (!signingKey) {
     throw new Error("No matching signing key found");

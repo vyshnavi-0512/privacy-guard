@@ -3,9 +3,11 @@ import { db, scansTable } from "../db/index.js";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireFirebaseAuth } from "../lib/auth-middleware.js";
+import { scanRateLimiter } from "../lib/rate-limiter.js";
 
 const router = Router();
 router.use(requireFirebaseAuth);
+router.use(scanRateLimiter);
 
 const CreateScanBody = z.object({
   query: z.string().min(1),

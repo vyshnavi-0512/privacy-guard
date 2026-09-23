@@ -9,7 +9,9 @@ import {
   useGetAiRecommendations,
   getGetScanHistoryQueryKey,
   getGetDashboardSummaryQueryKey,
-  getGetBreachCategoriesQueryKey
+  getGetBreachCategoriesQueryKey,
+  apiFetch,
+  API_URL
 } from "@/lib/api-client";
 import type { ScanResult, AdvisorResponse } from "@/lib/api-client";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -19,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, ShieldAlert, Cpu, AlertTriangle, CheckCircle, ArrowRight, Shield } from "lucide-react";
+import { Search, ShieldAlert, Cpu, AlertTriangle, CheckCircle, ArrowRight, Shield, Printer, FileText, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -46,20 +48,18 @@ const scanSchema = z
 
 export default function ScanPage() {
   const [aiPlan, setAiPlan] = useState("");
-const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const generateRemediationPlan = async () => {
     if (!scanResult) return;
   
     try {
       setIsGeneratingPlan(true);
   
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/remediation`,
+      const data = await apiFetch<{ plan: string }>(
+        `${API_URL}/api/remediation`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify({
             riskScore: scanResult.riskScore,
             breaches: scanResult.breaches.map(
@@ -69,8 +69,6 @@ const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
           }),
         }
       );
-  
-      const data = await response.json();
   
       setAiPlan(data.plan);
     } catch (error) {
@@ -267,6 +265,15 @@ const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
               Scan Results
             </h2>
             <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowReportModal(true)}
+                className="font-mono text-xs border-primary/40 hover:bg-primary/10 text-primary"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Export PDF Report
+              </Button>
               <div className="text-right">
                 <div className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Risk Score</div>
                 <div className="font-mono font-bold text-2xl text-primary">{scanResult.riskScore}/100</div>
@@ -417,6 +424,117 @@ const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {showReportModal && scanResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-[#0b101d] border border-primary/30 rounded-xl max-w-3xl w-full p-8 space-y-6 text-foreground shadow-2xl relative my-8">
+            <button
+              onClick={() => setShowReportModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground p-2 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div id="executive-security-report" className="space-y-6">
+              <div className="border-b border-primary/20 pb-4 flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-7 h-7 text-primary" />
+                    <span className="font-display font-bold text-2xl tracking-wider text-primary">PRIVACY GUARD</span>
+                  </div>
+                  <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mt-1">
+                    Executive Cybersecurity Audit Report
+                  </p>
+                </div>
+                <div className="text-right font-mono text-xs text-muted-foreground">
+                  <div>Report ID: PG-AUDIT-{scanResult.id}</div>
+                  <div>Date: {new Date(scanResult.scannedAt).toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-secondary/30 border border-border/50">
+                <div>
+                  <span className="text-xs font-mono uppercase text-muted-foreground">Target Identifier</span>
+                  <div className="font-mono text-lg font-semibold text-foreground">{scanResult.query}</div>
+                  <span className="text-xs font-mono text-primary uppercase">Target Type: {scanResult.type}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-mono uppercase text-muted-foreground">Risk Assessment</span>
+                  <div className="font-mono text-2xl font-bold text-primary">{scanResult.riskScore} / 100</div>
+                  <Badge variant={scanResult.breachCount > 0 ? "destructive" : "default"} className="font-mono text-xs mt-1">
+                    {scanResult.riskLevel.toUpperCase()} RISK
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Detected Breach Exposures ({scanResult.breachCount})
+                </h4>
+                {scanResult.breaches.length === 0 ? (
+                  <p className="font-mono text-sm text-primary">✓ No data breach exposures detected for this identifier.</p>
+                ) : (
+                  <div className="border border-border/50 rounded-lg overflow-hidden">
+                    <table className="w-full text-left font-mono text-xs">
+                      <thead className="bg-secondary/50 border-b border-border/50 text-muted-foreground uppercase">
+                        <tr>
+                          <th className="p-3">Source / Breach Name</th>
+                          <th className="p-3">Breach Date</th>
+                          <th className="p-3">Risk Level</th>
+                          <th className="p-3">Exposed Data</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/30">
+                        {scanResult.breaches.map((b, i) => (
+                          <tr key={i} className="hover:bg-secondary/20">
+                            <td className="p-3 font-semibold text-foreground">{b.name}</td>
+                            <td className="p-3 text-muted-foreground">{new Date(b.breachDate).toLocaleDateString()}</td>
+                            <td className="p-3">
+                              <span className="text-destructive font-bold uppercase">{b.riskLevel}</span>
+                            </td>
+                            <td className="p-3 text-muted-foreground">{b.dataClasses.join(", ")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {(aiPlan || advisorResponse) && (
+                <div className="space-y-3 border-t border-primary/20 pt-4">
+                  <h4 className="font-display text-sm font-semibold uppercase tracking-wider text-accent">
+                    AI Security Recommendations & Remediation Plan
+                  </h4>
+                  {advisorResponse?.overallAssessment && (
+                    <p className="font-mono text-xs text-muted-foreground leading-relaxed">
+                      {advisorResponse.overallAssessment}
+                    </p>
+                  )}
+                  {aiPlan && (
+                    <div className="font-mono text-xs text-slate-300 bg-secondary/20 p-3 rounded border border-border/30 max-h-48 overflow-y-auto">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiPlan}</ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="border-t border-border/40 pt-4 text-center font-mono text-[10px] text-muted-foreground">
+                Privacy Guard Automated Threat Intelligence Report • Generated for Security Compliance
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 border-t border-border/50 pt-4">
+              <Button variant="secondary" onClick={() => setShowReportModal(false)} className="font-mono text-xs">
+                Close
+              </Button>
+              <Button onClick={() => window.print()} className="font-mono text-xs bg-primary text-primary-foreground">
+                <Printer className="w-4 h-4 mr-2" /> Print / Save as PDF
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

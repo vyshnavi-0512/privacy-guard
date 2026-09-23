@@ -1,10 +1,12 @@
 import { Router } from "express";
-import OpenAI from "openai";
+import { ai } from "../lib/gemini.js";
 import { z } from "zod";
 import { requireFirebaseAuth } from "../lib/auth-middleware.js";
+import { aiRateLimiter } from "../lib/rate-limiter.js";
 
 const router = Router();
 router.use(requireFirebaseAuth);
+router.use(aiRateLimiter);
 
 const BreachSchema = z.object({
   name: z.string(),
@@ -18,8 +20,6 @@ const AdvisorBody = z.object({
   breaches: z.array(BreachSchema),
   exposedDataTypes: z.array(z.string()),
 });
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 router.post("/advisor/recommend", async (req, res) => {
   const parsed = AdvisorBody.safeParse(req.body);
@@ -83,14 +83,15 @@ Provide a concise, actionable security assessment. Return a JSON object with thi
 
 Provide 3-6 recommendations. Make them specific to the actual breaches found. If no breaches, provide general privacy hardening advice. Be direct and practical — no fluff.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 1200,
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
     });
 
-    const content = completion.choices[0]?.message?.content;
+    const content = response.text;
     if (!content) { res.status(500).json({ error: "No response from AI" }); return; }
 
     const parsed_response = JSON.parse(content);

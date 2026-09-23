@@ -2,9 +2,11 @@ import { Router } from "express";
 import { createHash } from "crypto";
 import { z } from "zod";
 import { requireFirebaseAuth } from "../lib/auth-middleware.js";
+import { passwordRateLimiter } from "../lib/rate-limiter.js";
 
 const router = Router();
 router.use(requireFirebaseAuth);
+router.use(passwordRateLimiter);
 const CheckPasswordBody = z.object({ password: z.string().min(1) });
 
 function sha1(input: string): string {

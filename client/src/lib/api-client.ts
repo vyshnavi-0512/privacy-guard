@@ -1,7 +1,8 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { UseQueryOptions, UseMutationOptions } from "@tanstack/react-query";
 import { auth } from "../../firebase";
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "";
+export { apiFetch, API_URL };
 import type {
   ScanInput, ScanResult, ScanSummary, AdvisorInput, AdvisorResponse,
   DashboardSummary, BreachCategory, MonitorInput, Monitor, BreachAlert,

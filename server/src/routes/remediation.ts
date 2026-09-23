@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { ai } from "../lib/gemini.js";
+import { requireFirebaseAuth } from "../lib/auth-middleware.js";
+import { aiRateLimiter } from "../lib/rate-limiter.js";
 
 const router = Router();
+router.use(requireFirebaseAuth);
+router.use(aiRateLimiter);
 
 router.post("/", async (req, res) => {
   try {
